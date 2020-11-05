@@ -1,0 +1,31 @@
+{
+    "defaultLanguage": "he",
+    "languages": [
+        {
+            "prefix": "en",
+            "rtl": false
+        },
+        {
+            "prefix": "ar",
+            "rtl": true
+        },
+        {
+            "prefix": "he",
+            "rtl": true
+        }
+    ],
+    "subscreenButtons": [
+        {
+            "x": 100,
+            "y": 200,
+            "image": "1-button.png",
+            "tappedImage": "1-button-tapped.png",
+            "screenImage": "1.png"
+        }
+    ],
+    "showFPS": false,
+    "touch": true,
+    "touchDeviceName": "Touch",
+    "touchMaxX": 4096,
+    "touchMaxY": 4096
+}
