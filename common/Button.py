@@ -4,9 +4,9 @@ from common.Utilities import Utilities
 
 
 class Button:
-    def __init__(self, screen, rect, image, tappedImage, text, color, selectedColor, font, onClickCallback, sensitivityFactor=1.0):
+    def __init__(self, screen, center, image, tappedImage, text, color, selectedColor, font, onClickCallback, sensitivityFactor=1.0):
         self.screen = screen
-        self.rect = rect
+        self.rect = Rect(center[0] - image.get_width() // 2, center[1] - image.get_height() // 2, image.get_width(), image.get_height())
         self.image = image
         self.tappedImage = tappedImage
         self.color = color
@@ -35,7 +35,10 @@ class Button:
 
     def draw(self):
         if self.visible:
-            self.screen.blit(self.tappedImage if self.isMouseDownOnButton else self.image, (self.rect.left, self.rect.top))
+            if self.isMouseDownOnButton:
+                self.screen.blit(self.tappedImage, (self.rect.center[0] - self.tappedImage.get_width() // 2, self.rect.center[1] - self.tappedImage.get_height() // 2))
+            else:
+                self.screen.blit(self.image, (self.rect.left, self.rect.top))
 
             if self.textBox is not None:
                 Utilities.drawTextOnCenter(self.screen, self.selectedTextBox if self.isMouseDownOnButton else self.textBox, self.rect.center)
