@@ -9,14 +9,15 @@ from common.TouchScreen import TouchScreen
 from common.LanguageButton import LanguageButton
 from common.Log import Log
 
+#TODO: Preload all images
 
 class SecondIncarnation:
 
     CONFIG_FILENAME = 'assets/config/config.json'
     LOG_FILE_PATH = 'timeline.log'
 
-    BUTTON_WIDTH = 100
-    BUTTON_HEIGHT = 100
+    HOME_BUTTON_X = 1038
+    HOME_BUTTON_Y = 50
 
     def __init__(self):
         Log.init(self.LOG_FILE_PATH)
@@ -25,12 +26,14 @@ class SecondIncarnation:
         self.screen = None
         self.cursor = None
         self.config = None
-        self.buttons = []
         self.mainButtons = []
+        self.languageButtons = []
+        self.subscreenButtons = []
         self.blitCursor = True
         self.touchScreen = None
         self.background = None
-        self.languageButtons = []
+        self.mainBackground = None
+        self.isMainScreen = True
 
     def start(self):
         self.config = Config(self.CONFIG_FILENAME)
@@ -49,37 +52,57 @@ class SecondIncarnation:
             if not self.touchScreen.setup():
                 self.config.setTouch(False)
 
-        self.background = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/main.png').convert_alpha()
-        self.isMainScreen = True
+        self.mainBackground = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/main.png').convert_alpha()
+        self.background = self.mainBackground
 
-        for button in self.config.getSubscreenButtons():
-            print(button)
-            buttonImage = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + button['image']).convert_alpha()
-            buttonTappedImage = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + button['tappedImage']).convert_alpha()
-            buttonInstance = Button(self.screen, (button['x'], button['y']),
-                                    buttonImage, buttonTappedImage, None, None, None, None, partial(self.onButtonClicked, button));
-            self.buttons.append(buttonInstance)
-            self.mainButtons.append(buttonInstance)
+        self.subscreenButtons.append(Button(self.screen, (self.HOME_BUTTON_X, self.HOME_BUTTON_Y), 
+            pygame.image.load('assets/images/home.png').convert_alpha(), pygame.image.load('assets/images/home.png').convert_alpha(), None, None, None, None, self.onHomeClicked))
 
+        self.loadMainButtons()
 
-        # for i in range(len(self.config.getLanguages())):
-        #     language = self.config.getLanguages()[i]
+        for i in range(len(self.config.getLanguages())):
+            language = self.config.getLanguages()[i]
 
-        #     languageButton = LanguageButton(self.screen, Rect(i * 63 + 15, 1010, languageButtonImage.get_width(), languageButtonImage.get_height()), 
-        #         languageButtonImage, languageButtonTappedImage, languageButtonSelectedImage, language['buttonText'], DOT_TEXT_COLOR, DOT_SELECTED_TEXT_COLOR, DOT_SELECTED_TEXT_COLOR, languageFont, partial(self.languageClicked, i))
-        #     if language['prefix'] == self.config.languagePrefix:
-        #         languageButton.visible = False
+            prefix = language['prefix']
+            languageButtonImage = pygame.image.load('assets/images/' + prefix + '.png').convert_alpha()
+            languageButtonTappedImage = pygame.image.load('assets/images/' + prefix + '-tapped.png').convert_alpha()
 
-        #     self.languageButtons.append(languageButton)
-        #     self.buttons.append(languageButton)
+            languageButton = LanguageButton(self.screen, (i * 200 + 15, 100),#1010),
+                languageButtonImage, languageButtonTappedImage, languageButtonTappedImage, None, None, None, None, None, partial(self.languageClicked, i))
+            if language['prefix'] == self.config.languagePrefix:
+                languageButton.visible = False
+
+            self.languageButtons.append(languageButton)
 
         Log.getLogger().info('INIT')
 
         self.loop()
 
+    def onHomeClicked(self):
+        self.background = self.mainBackground
+        self.isMainScreen = True;
+
     def onButtonClicked(self, button):
         self.background = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + button['screenImage'])
         self.isMainScreen = False
+
+    #TODO: Reuse in init
+    def loadBackground(self):
+        if self.isMainScreen:
+            self.mainBackground = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/main.png').convert_alpha()
+            self.background = self.mainBackground
+            self.loadMainButtons()
+        else:
+            self.background = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + button['screenImage'])
+
+    def loadMainButtons(self):
+        self.mainButtons = []
+        for button in self.config.getSubscreenButtons():
+            buttonImage = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + button['image']).convert_alpha()
+            buttonTappedImage = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + button['tappedImage']).convert_alpha()
+            buttonInstance = Button(self.screen, (button['x'], button['y']),
+                                    buttonImage, buttonTappedImage, None, None, None, None, partial(self.onButtonClicked, button));
+            self.mainButtons.append(buttonInstance)
 
     def languageClicked(self, index):
         self.config.changeLanguage(index)
@@ -93,13 +116,20 @@ class SecondIncarnation:
                 self.languageButtons[i].visible = False
             else:
                 self.languageButtons[i].visible = True
+        self.loadBackground()
+
+    def getButtons(self):
+        if self.isMainScreen:
+            return self.mainButtons + self.languageButtons
+        else:
+            return self.subscreenButtons + self.languageButtons
 
     def onMouseDown(self, pos):
-        for button in self.buttons:
+        for button in self.getButtons():
             button.onMouseDown(pos)
 
     def onMouseUp(self, pos):
-        for button in self.buttons:
+        for button in self.getButtons():
             button.onMouseUp(pos)
 
     def onMouseMove(self, pos):
@@ -108,11 +138,8 @@ class SecondIncarnation:
     def draw(self, _):
         self.screen.blit(self.background, (0, 0))
 
-        if self.isMainScreen:
-            for button in self.mainButtons:
-                button.draw()
-        else:
-            pass
+        for button in self.getButtons():
+            button.draw()
 
     def handleEvents(self):
         for event in pygame.event.get():
