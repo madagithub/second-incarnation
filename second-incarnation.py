@@ -1,4 +1,7 @@
 from functools import partial
+import time
+
+import serial
 
 import pygame
 from pygame.locals import Color
@@ -11,7 +14,6 @@ from common.Log import Log
 
 #TODO: Preload all images
 
-
 class SecondIncarnation:
 
     CONFIG_FILENAME = 'assets/config/config.json'
@@ -19,6 +21,19 @@ class SecondIncarnation:
 
     HOME_BUTTON_X = 50
     HOME_BUTTON_Y = 1038
+
+    PLAY_BUTTON_X = 959
+    PLAY_BUTTON_Y = 300
+
+    EMERGENCY_STOP_RESPONSE = b'2'
+    STOP_RESPONSE = b'0'
+
+    START_COMMAND = b'1'
+
+    MACHINE_CHECK_INTERVAL = 1
+    WAIT_FOR_START_INTERVAL = 0.1
+
+    MACHINE_PORT_NAME = '/dev/ttyUSB0'
 
     def __init__(self):
         Log.init(self.LOG_FILE_PATH)
@@ -30,12 +45,66 @@ class SecondIncarnation:
         self.mainButtons = []
         self.languageButtons = []
         self.subscreenButtons = []
+        self.playButton = None
         self.blitCursor = True
         self.touchScreen = None
         self.background = None
         self.mainBackground = None
         self.isMainScreen = True
         self.screenImage = None
+        self.serialPort = None
+        self.machinePlaying = False
+
+    def openSerialPort(self):
+        if self.serialPort is None:
+            try:
+                self.serialPort = serial.Serial(self.MACHINE_PORT_NAME, 115200, timeout=0)
+            except Exception as e:
+                print(str(e))
+                self.serialPort = None
+
+    # Try to send to serial, and if an error occurs, open serial port again for X retries
+    def sendToSerialPort(self, originalCommand):
+        print("Attempting sending " + str(originalCommand) + "...")
+        command = originalCommand + b'\n'
+        commandSent = False
+
+        retriesNum = 0
+
+        self.openSerialPort()
+
+        if self.serialPort is None:
+            print("Failed to open serial port, returning...")
+            return False
+
+        while (not commandSent):
+            try:
+                self.serialPort.write(command)
+                print("Send Successful!")
+                commandSent = True
+            except Exception as e:
+                print(str(e))
+                if retriesNum == 1:
+                    print("Failed to write on retrying, returning...")
+                    break
+
+                try:
+                    self.serialPort = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+                    retriesNum += 1
+                except Exception as e:
+                    print(str(e))
+                    self.serialPort = None
+                    print("Failed to open serial port, returning...")
+                    break
+
+        return commandSent
+
+    def checkMachineStop(self):
+        readByte = self.serialPort.read(1)
+        if readByte == self.EMERGENCY_STOP_RESPONSE or readByte == self.STOP_RESPONSE:
+            self.machinePlaying = False
+            self.isMainScreen = True
+            self.background = self.mainStartBackground
 
     def start(self):
         self.config = Config(self.CONFIG_FILENAME)
@@ -54,15 +123,15 @@ class SecondIncarnation:
             if not self.touchScreen.setup():
                 self.config.setTouch(False)
 
-        self.mainBackground = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/main.png').convert_alpha()
-        self.background = self.mainBackground
+        self.loadBackground()
 
         self.subscreenButtons.append(Button(self.screen, (self.HOME_BUTTON_X, self.HOME_BUTTON_Y),
                                             pygame.image.load('assets/images/home.png').convert_alpha(),
-                                            pygame.image.load('assets/images/home.png').convert_alpha(),
+                                            pygame.image.load('assets/images/home-tapped.png').convert_alpha(),
                                             None, None, None, None, self.onHomeClicked))
 
         self.loadMainButtons()
+        self.loadPlayButton()
 
         for i in range(len(self.config.getLanguages())):
             language = self.config.getLanguages()[i]
@@ -84,8 +153,18 @@ class SecondIncarnation:
 
         self.loop()
 
+    def onPlayClicked(self):
+        self.sendToSerialPort(self.START_COMMAND)
+        response = b''
+        while response == b'':
+            response = self.serialPort.read(1) # Read response
+            time.sleep(self.WAIT_FOR_START_INTERVAL)
+        if response == self.START_COMMAND:
+            self.machinePlaying = True
+            self.background = self.mainBackground
+
     def onHomeClicked(self):
-        self.background = self.mainBackground
+        self.background = self.mainBackground if self.machinePlaying else self.mainStartBackground
         self.isMainScreen = True
 
     def onButtonClicked(self, button):
@@ -97,8 +176,10 @@ class SecondIncarnation:
     def loadBackground(self):
         if self.isMainScreen:
             self.mainBackground = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/main.png').convert_alpha()
-            self.background = self.mainBackground
+            self.mainStartBackground = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/main-start.png').convert_alpha()
+            self.background = self.mainBackground if self.machinePlaying else self.mainStartBackground
             self.loadMainButtons()
+            self.loadPlayButton()
         else:
             self.background = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + self.screenImage)
 
@@ -108,8 +189,15 @@ class SecondIncarnation:
             buttonImage = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + button['image']).convert_alpha()
             buttonTappedImage = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + button['tappedImage']).convert_alpha()
             buttonInstance = Button(self.screen, (button['x'], button['y']),
-                                    buttonImage, buttonTappedImage, None, None, None, None, partial(self.onButtonClicked, button));
+                                    buttonImage, buttonTappedImage, None, None, None, None, partial(self.onButtonClicked, button))
             self.mainButtons.append(buttonInstance)
+
+    def loadPlayButton(self):
+        playButtonImage = pygame.image.load('assets/images/play.png').convert_alpha()
+        playButtonTappedImage = pygame.image.load('assets/images/play-tapped.png').convert_alpha()
+
+        self.playButton = Button(self.screen, (self.PLAY_BUTTON_X, self.PLAY_BUTTON_Y), playButtonImage, playButtonTappedImage,
+            None, None, None, None, self.onPlayClicked)
 
     def languageClicked(self, index):
         self.config.changeLanguage(index)
@@ -127,7 +215,7 @@ class SecondIncarnation:
 
     def getButtons(self):
         if self.isMainScreen:
-            return self.mainButtons + self.languageButtons
+            return self.languageButtons + (self.mainButtons if self.machinePlaying else [self.playButton])
 
         return self.subscreenButtons + self.languageButtons
 
@@ -164,12 +252,18 @@ class SecondIncarnation:
 
     def loop(self):
         try:
+            lastMachineCheckTime = time.time()
             isGameRunning = True
             clock = pygame.time.Clock()
             lastTime = pygame.time.get_ticks()
             font = pygame.font.Font(None, 30)
+            self.openSerialPort()
 
             while isGameRunning:
+                if time.time() - lastMachineCheckTime > self.MACHINE_CHECK_INTERVAL:
+                    self.checkMachineStop()
+                    lastMachineCheckTime = time.time()
+
                 isGameRunning = self.handleEvents()
 
                 if self.config.isTouch():
