@@ -93,41 +93,49 @@
             "x": 721,
             "y": 867,
             "name": "DARK_RED",
-            "image": "1-button.png",
-            "tappedImage": "1-button-tapped.png",
-            "screenImage": "1.png"
-        },
-        {
-            "x": 878,
-            "y": 867,
-            "name": "RED",
             "image": "10-button.png",
             "tappedImage": "10-button-tapped.png",
             "screenImage": "10.png"
         },
         {
-            "x": 1034,
+            "x": 878,
             "y": 867,
-            "name": "GRAY",
+            "name": "RED",
             "image": "11-button.png",
             "tappedImage": "11-button-tapped.png",
             "screenImage": "11.png"
         },
         {
-            "x": 1190,
+            "x": 1034,
             "y": 867,
-            "name": "GOLD",
+            "name": "GRAY",
             "image": "12-button.png",
             "tappedImage": "12-button-tapped.png",
             "screenImage": "12.png"
         },
         {
-            "x": 1346,
+            "x": 1190,
             "y": 867,
-            "name": "MEMORY",
+            "name": "GOLD",
             "image": "13-button.png",
             "tappedImage": "13-button-tapped.png",
             "screenImage": "13.png"
+        },
+        {
+            "x": 1346,
+            "y": 867,
+            "name": "GREEN_SILVER",
+            "image": "14-button.png",
+            "tappedImage": "14-button-tapped.png",
+            "screenImage": "14.png"
+        },
+        {
+            "x": 1502,
+            "y": 867,
+            "name": "MEMORY",
+            "image": "15-button.png",
+            "tappedImage": "15-button-tapped.png",
+            "screenImage": "15.png"
         }
     ],
     "showFPS": false,

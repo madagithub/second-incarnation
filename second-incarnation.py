@@ -36,6 +36,8 @@ class SecondIncarnation:
 
     BACK_TO_HOME_TIMEOUT = 300
 
+    MACHINE_RUN_TIME = 15 * 60
+
     MACHINE_PORT_NAME = '/dev/ttyUSB0'
 
     def __init__(self):
@@ -103,6 +105,13 @@ class SecondIncarnation:
 
     def checkMachineState(self):
         if self.serialPort is not None:
+            if self.machinePlaying and self.machineStartTime is not None and time.time() - self.machineStartTime >= self.MACHINE_RUN_TIME:
+                self.machinePlaying = False
+                self.machineStarting = False
+                self.isMainScreen = True
+                self.background = self.mainStartBackground
+                self.machineStartTime = None
+
             try:
                 readByte = self.serialPort.read(1)
             except Exception as e:
@@ -136,7 +145,7 @@ class SecondIncarnation:
         pygame.init()
         pygame.mouse.set_visible(False)
 
-        self.screen = pygame.display.set_mode((1920, 1080), pygame.FULLSCREEN)
+        self.screen = pygame.display.set_mode((1920, 1080), pygame.FULLSCREEN | pygame.SCALED)
         self.cursor = pygame.image.load('assets/images/cursor.png').convert_alpha()
 
         if self.config.isTouch():

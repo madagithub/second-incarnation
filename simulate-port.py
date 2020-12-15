@@ -11,7 +11,7 @@ while True:
 	if char == b'1':
 		print('Activating...')
 		os.write(master, bytes('1', 'utf-8'))
-		time.sleep(30)
+		time.sleep(12)
 		print('Deactivating...')
 		os.write(master, bytes('0', 'utf-8'))
 	if char == b'2':
