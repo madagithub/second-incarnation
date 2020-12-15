@@ -17,7 +17,7 @@ from common.Log import Log
 class SecondIncarnation:
 
     CONFIG_FILENAME = 'assets/config/config.json'
-    LOG_FILE_PATH = 'timeline.log'
+    LOG_FILE_PATH = 'second-incarnation.log'
 
     HOME_BUTTON_X = 50
     HOME_BUTTON_Y = 1038
@@ -30,8 +30,11 @@ class SecondIncarnation:
 
     START_COMMAND = b'1'
 
-    MACHINE_CHECK_INTERVAL = 1
+    MACHINE_CHECK_INTERVAL = 0.04
     WAIT_FOR_START_INTERVAL = 0.1
+    MACHINE_START_TIMEOUT = 0.1
+
+    BACK_TO_HOME_TIMEOUT = 300
 
     MACHINE_PORT_NAME = '/dev/ttyUSB0'
 
@@ -54,60 +57,80 @@ class SecondIncarnation:
         self.screenImage = None
         self.serialPort = None
         self.machinePlaying = False
+        self.machineStarting = False
+        self.machineStartTime = None
+        self.lastInteractionTime = None
 
     def openSerialPort(self):
         if self.serialPort is None:
             try:
                 self.serialPort = serial.Serial(self.MACHINE_PORT_NAME, 115200, timeout=0)
             except Exception as e:
-                print(str(e))
+                Log.getLogger().exception('ERROR,Failed to open serial port')
                 self.serialPort = None
 
     # Try to send to serial, and if an error occurs, open serial port again for X retries
-    def sendToSerialPort(self, originalCommand):
-        print("Attempting sending " + str(originalCommand) + "...")
-        command = originalCommand + b'\n'
+    def sendToSerialPort(self, command):
         commandSent = False
 
         retriesNum = 0
 
-        self.openSerialPort()
-
         if self.serialPort is None:
-            print("Failed to open serial port, returning...")
-            return False
+            self.openSerialPort()
+
+            if self.serialPort is None:
+                Log.getLogger().exception('ERROR,Failed to open serial port')
+                return False
 
         while (not commandSent):
             try:
                 self.serialPort.write(command)
-                print("Send Successful!")
                 commandSent = True
             except Exception as e:
-                print(str(e))
+                Log.getLogger().exception('ERROR,Failed to write to serial port')
                 if retriesNum == 1:
-                    print("Failed to write on retrying, returning...")
                     break
 
                 try:
                     self.serialPort = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
                     retriesNum += 1
                 except Exception as e:
-                    print(str(e))
+                    Log.getLogger().exception('ERROR,Failed to open serial port')
                     self.serialPort = None
-                    print("Failed to open serial port, returning...")
                     break
 
         return commandSent
 
-    def checkMachineStop(self):
-        readByte = self.serialPort.read(1)
-        if readByte == self.EMERGENCY_STOP_RESPONSE or readByte == self.STOP_RESPONSE:
+    def checkMachineState(self):
+        if self.serialPort is not None:
+            try:
+                readByte = self.serialPort.read(1)
+            except Exception as e:
+                Log.getLogger().exception('ERROR,Failed to read from serial port')
+                self.SerialPort = None
+                self.openSerialPort()
+                return
+
+            if self.machineStarting and readByte == self.START_COMMAND:
+                self.machinePlaying = True
+                self.machineStarting = False
+                self.background = self.mainBackground
+            elif readByte == self.EMERGENCY_STOP_RESPONSE or readByte == self.STOP_RESPONSE:
+                self.machinePlaying = False
+                self.machineStarting = False
+                self.isMainScreen = True
+                self.background = self.mainStartBackground
+
+            if self.machineStarting and time.time() - self.machineStartTime > self.MACHINE_START_TIMEOUT:
+                self.machineStarting = False
+        else:
             self.machinePlaying = False
-            self.isMainScreen = True
-            self.background = self.mainStartBackground
 
     def start(self):
         self.config = Config(self.CONFIG_FILENAME)
+
+        self.openSerialPort()
+        time.sleep(3)
 
         pygame.mixer.pre_init(44100, -16, 1, 512)
         pygame.init()
@@ -153,26 +176,39 @@ class SecondIncarnation:
 
         self.loop()
 
+    def checkInactive(self):
+        if self.lastInteractionTime is not None and time.time() - self.lastInteractionTime > self.BACK_TO_HOME_TIMEOUT:
+            Log.getLogger().info('RESET')
+            self.lastInteractionTime = time.time()
+            self.moveToHome()
+
     def onPlayClicked(self):
-        self.sendToSerialPort(self.START_COMMAND)
-        response = b''
-        while response == b'':
-            response = self.serialPort.read(1) # Read response
-            time.sleep(self.WAIT_FOR_START_INTERVAL)
-        if response == self.START_COMMAND:
-            self.machinePlaying = True
-            self.background = self.mainBackground
+        self.lastInteractionTime = time.time()
+        Log.getLogger().info('PLAY')
+        if self.serialPort is not None:
+            self.sendToSerialPort(self.START_COMMAND)
+            self.machineStarting = True
+            self.machineStartTime = time.time()
+        else:
+            self.openSerialPort()
 
     def onHomeClicked(self):
+        self.lastInteractionTime = time.time()
+        Log.getLogger().info('HOME')
+        self.moveToHome()
+
+    def moveToHome(self):
         self.background = self.mainBackground if self.machinePlaying else self.mainStartBackground
         self.isMainScreen = True
 
     def onButtonClicked(self, button):
+        self.lastInteractionTime = time.time()
+        screenName = button['name']
+        Log.getLogger().info(f'SUBSCREEN,{screenName}')
         self.screenImage = button['screenImage']
         self.background = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/' + self.screenImage)
         self.isMainScreen = False
 
-    #TODO: Reuse in init
     def loadBackground(self):
         if self.isMainScreen:
             self.mainBackground = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/main.png').convert_alpha()
@@ -200,6 +236,7 @@ class SecondIncarnation:
             None, None, None, None, self.onPlayClicked)
 
     def languageClicked(self, index):
+        self.lastInteractionTime = time.time()
         self.config.changeLanguage(index)
         Log.getLogger().info('LANGUAGE_CHANGED,' + self.config.languagePrefix)
         self.onLanguageChanged()
@@ -257,11 +294,12 @@ class SecondIncarnation:
             clock = pygame.time.Clock()
             lastTime = pygame.time.get_ticks()
             font = pygame.font.Font(None, 30)
-            self.openSerialPort()
 
             while isGameRunning:
+                self.checkInactive()
+
                 if time.time() - lastMachineCheckTime > self.MACHINE_CHECK_INTERVAL:
-                    self.checkMachineStop()
+                    self.checkMachineState()
                     lastMachineCheckTime = time.time()
 
                 isGameRunning = self.handleEvents()

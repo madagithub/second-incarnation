@@ -18,6 +18,7 @@
         {
             "x": 486,
             "y": 685,
+            "name": "BROWN",
             "image": "1-button.png",
             "tappedImage": "1-button-tapped.png",
             "screenImage": "1.png"
@@ -26,6 +27,7 @@
         {
             "x": 642,
             "y": 685,
+            "name": "ORANGE",
             "image": "2-button.png",
             "tappedImage": "2-button-tapped.png",
             "screenImage": "2.png"
@@ -34,6 +36,7 @@
         {
             "x": 799,
             "y": 685,
+            "name": "YELLOW",
             "image": "3-button.png",
             "tappedImage": "3-button-tapped.png",
             "screenImage": "3.png"
@@ -41,6 +44,7 @@
         {
             "x": 955,
             "y": 685,
+            "name": "PURPLE",
             "image": "4-button.png",
             "tappedImage": "4-button-tapped.png",
             "screenImage": "4.png"
@@ -48,6 +52,7 @@
         {
             "x": 1111,
             "y": 685,
+            "name": "PINK",
             "image": "5-button.png",
             "tappedImage": "5-button-tapped.png",
             "screenImage": "5.png"
@@ -55,6 +60,7 @@
         {
             "x": 1267,
             "y": 685,
+            "name": "CREAM",
             "image": "6-button.png",
             "tappedImage": "6-button-tapped.png",
             "screenImage": "6.png"
@@ -62,6 +68,7 @@
         {
             "x": 1423,
             "y": 685,
+            "name": "SILVER",
             "image": "7-button.png",
             "tappedImage": "7-button-tapped.png",
             "screenImage": "7.png"
@@ -69,6 +76,7 @@
         {
             "x": 409,
             "y": 867,
+            "name": "GREEN",
             "image": "8-button.png",
             "tappedImage": "8-button-tapped.png",
             "screenImage": "8.png"
@@ -76,6 +84,7 @@
         {
             "x": 565,
             "y": 867,
+            "name": "BLUE",
             "image": "9-button.png",
             "tappedImage": "9-button-tapped.png",
             "screenImage": "9.png"
@@ -83,6 +92,7 @@
         {
             "x": 721,
             "y": 867,
+            "name": "DARK_RED",
             "image": "1-button.png",
             "tappedImage": "1-button-tapped.png",
             "screenImage": "1.png"
@@ -90,6 +100,7 @@
         {
             "x": 878,
             "y": 867,
+            "name": "RED",
             "image": "10-button.png",
             "tappedImage": "10-button-tapped.png",
             "screenImage": "10.png"
@@ -97,6 +108,7 @@
         {
             "x": 1034,
             "y": 867,
+            "name": "GRAY",
             "image": "11-button.png",
             "tappedImage": "11-button-tapped.png",
             "screenImage": "11.png"
@@ -104,6 +116,7 @@
         {
             "x": 1190,
             "y": 867,
+            "name": "GOLD",
             "image": "12-button.png",
             "tappedImage": "12-button-tapped.png",
             "screenImage": "12.png"
@@ -111,6 +124,7 @@
         {
             "x": 1346,
             "y": 867,
+            "name": "MEMORY",
             "image": "13-button.png",
             "tappedImage": "13-button-tapped.png",
             "screenImage": "13.png"
