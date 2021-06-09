@@ -2,6 +2,7 @@ from functools import partial
 import time
 
 import serial
+import math
 
 import pygame
 from pygame.locals import Color
@@ -37,6 +38,7 @@ class SecondIncarnation:
     BACK_TO_HOME_TIMEOUT = 300
 
     MACHINE_RUN_TIME = 15 * 60
+    MACHINE_COOLING_TIME = 3 * 60
 
     MACHINE_PORT_NAME = '/dev/ttyUSB0'
 
@@ -59,6 +61,7 @@ class SecondIncarnation:
         self.screenImage = None
         self.serialPort = None
         self.machinePlaying = False
+        self.machineCooling = False
         self.machineStarting = False
         self.machineStartTime = None
         self.lastInteractionTime = None
@@ -105,12 +108,20 @@ class SecondIncarnation:
 
     def checkMachineState(self):
         if self.serialPort is not None:
+            if self.machineCooling and time.time() - self.machineEndTime >= self.MACHINE_COOLING_TIME:
+                self.machineCooling = False
+                self.background = self.mainStartBackground
+                self.machineEndTime = None
+
             if self.machinePlaying and self.machineStartTime is not None and time.time() - self.machineStartTime >= self.MACHINE_RUN_TIME:
                 self.machinePlaying = False
                 self.machineStarting = False
+                self.machineCooling = True
+                self.machineEndTime = time.time()
                 self.isMainScreen = True
-                self.background = self.mainStartBackground
+                self.background = self.clockBackground
                 self.machineStartTime = None
+                self.loadBackground()
 
             try:
                 readByte = self.serialPort.read(1)
@@ -128,7 +139,10 @@ class SecondIncarnation:
                 self.machinePlaying = False
                 self.machineStarting = False
                 self.isMainScreen = True
-                self.background = self.mainStartBackground
+                self.background = self.clockBackground
+                self.machineCooling = True
+                self.machineEndTime = time.time()
+                self.loadBackground()
 
             if self.machineStarting and time.time() - self.machineStartTime > self.MACHINE_START_TIMEOUT:
                 self.machineStarting = False
@@ -144,6 +158,8 @@ class SecondIncarnation:
         pygame.mixer.pre_init(44100, -16, 1, 512)
         pygame.init()
         pygame.mouse.set_visible(False)
+
+        self.clockFont = pygame.font.Font('assets/fonts/RobotoMono-Medium.ttf', 300)
 
         self.screen = pygame.display.set_mode((1920, 1080), pygame.FULLSCREEN | pygame.SCALED)
         self.cursor = pygame.image.load('assets/images/cursor.png').convert_alpha()
@@ -222,7 +238,9 @@ class SecondIncarnation:
         if self.isMainScreen:
             self.mainBackground = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/main.png').convert_alpha()
             self.mainStartBackground = pygame.image.load('assets/images/' + self.config.getLanguagePrefix() + '/main-start.png').convert_alpha()
-            self.background = self.mainBackground if self.machinePlaying else self.mainStartBackground
+            self.clockBackground = pygame.image.load('assets/images/clock.png').convert_alpha()
+            self.background = self.clockBackground if self.machineCooling else (self.mainBackground if self.machinePlaying else self.mainStartBackground)
+
             self.loadMainButtons()
             self.loadPlayButton()
         else:
@@ -260,6 +278,9 @@ class SecondIncarnation:
         self.loadBackground()
 
     def getButtons(self):
+        if self.machineCooling:
+            return []
+
         if self.isMainScreen:
             return self.languageButtons + (self.mainButtons if self.machinePlaying else [self.playButton])
 
@@ -281,6 +302,23 @@ class SecondIncarnation:
 
         for button in self.getButtons():
             button.draw()
+
+        self.drawCoolingTimer()
+
+    def drawCoolingTimer(self):
+        if self.machineCooling:
+            totalSecondsPassed = time.time() - self.machineEndTime
+            totalSecondsLeft = self.MACHINE_COOLING_TIME - totalSecondsPassed
+            if totalSecondsLeft < 0:
+                totalSecondsLeft = 0
+
+            minutesLeft = math.floor(totalSecondsLeft / 60)
+            secondsLeft = math.floor(totalSecondsLeft % 60)
+
+            text = self.clockFont.render(f'{minutesLeft:02}:{secondsLeft:02}', True, (255, 255, 255)) 
+            textRect = text.get_rect()  
+            textRect.center = (1920 // 2, 1080 // 2)
+            self.screen.blit(text, textRect)
 
     def handleEvents(self):
         for event in pygame.event.get():
