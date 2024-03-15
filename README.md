@@ -5,6 +5,7 @@ This exhibit provides a UI that interacts with Didi Vardi's machine.
 The opening screen allows activating the machine with a button.
 While the machine is running, it is possible to browse each machine part description using main screen buttons.
 Once the machines stops, a cooldown timer is shown and the exhibit counts down the time until it will be operational again, showing the UI with the activation button again.
+It is designed to work with a (large) touch screen but can be run using a mouse as well with a cursor.
 
 ## Installation & Run
 The exhibit runs using python 3 on linux, using the pygame engine.
