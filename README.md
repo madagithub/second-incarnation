@@ -117,6 +117,7 @@ The exhibit supports a rotating log named second-incarnation.log in the root dir
 * ERROR,Failed to read from serial port (when serial port could not be read from)
 * ERROR,Error occured! (when a general error occured)
 
+Each event will be prefixed by a timestamp (year-month-day hour:minute:seconds.mili with year as 4 digit, all rest as 2 digit and milliseconds as 3 digits) then a comma, following the event as specified above.
 
 ## Serial Port Interface
 The exhibit requires a serial port connection the machine, so it can activate it, and know when it stopped working.
